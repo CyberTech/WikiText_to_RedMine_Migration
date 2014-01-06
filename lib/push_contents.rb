@@ -1,5 +1,11 @@
 #!/usr/bin/env ruby
 
+# Avoid issue with 1.9 where string.gsub will complain of illegal char in ASCII string.
+if RUBY_VERSION =~ /1.9/
+Encoding.default_external = Encoding::UTF_8
+Encoding.default_internal = Encoding::UTF_8
+end
+
 
 # explicitly require older 'builder' gem in order to avoid conflicts
 gem 'builder', '~> 3.0.4'
@@ -66,6 +72,14 @@ def optimize_mediawiki_markup(mediawiki_markup)
   mediawiki_markup.gsub!(/\[\[Datei:/,'[[File:')
   mediawiki_markup.gsub!(/\[\[Bild:/,'[[File:')
 
+  # Convert lines beginning with one ore more ":" (indented paragraphs) to p(. for textile syntax, retaining indentation level
+  # Otherwise, Pandoc converts it to a noisy (and non-working, with stock redmine) <dl>/<dt>/<dd> combo
+  mediawiki_markup.gsub!(/^(:+?) *([^\n]+?)/m) { 'p' + ('(') * $1.to_s.length + ". " + $2 }
+
+  # Protect these from textile conversion, as redmine wants it to be in mediawiki-style format, for the wiki pages
+  mediawiki_markup.gsub!(/\[\[((?!HTTP).+?)\]\]/im,'<MW_DOUBLEBRACKET>\\1</MW_DOUBLEBRACKET>')
+  mediawiki_markup.gsub!(/\[((?!HTTP).+?)\]/im,'<MW_SINGLEBRACKET>\\1</MW_SINGLEBRACKET>')
+
   mediawiki_markup
 end
 
@@ -80,6 +94,9 @@ def optimize_textile_markup(textile_markup)
   textile_markup.gsub!('</tt>', '@')
 
   textile_markup = CGI.unescapeHTML(textile_markup)
+
+  textile_markup.gsub!(/<MW_DOUBLEBRACKET>(.+?)<\/MW_DOUBLEBRACKET>/m,'[[\\1]]')
+  textile_markup.gsub!(/<MW_SINGLEBRACKET>(.+?)<\/MW_SINGLEBRACKET>/m,'[\\1]')
 
   textile_markup
 end
@@ -127,7 +144,11 @@ def push_all_revisions_to_redmine
 
     begin
       # raise "A page titled '#{page_title}' already exists." if WikiPage.find(page_title)
-      p "WARNING: A page titled '#{page_title}' already exists. Skipping." if WikiPage.find(page_title)
+		if (WikiPage.find(page_title))
+			p "WARNING: A page titled '#{page_title}' already exists. Deleting."
+			delete_wiki_page(page_title)
+		end
+		p "WARNING: A page titled '#{page_title}' still exists. Skipping." if WikiPage.find(page_title)
 
     rescue ActiveResource::ForbiddenAccess => fa
 			handle_forbidden_view_access(fa)
@@ -145,7 +166,7 @@ def push_all_revisions_to_redmine
         comment = r.css('comment').text
         comment_for_redmine = "#{date_time} #{comment}"
 
-        p "Importing revision #{i+1}/#{revision_count} of '#{page_title}' impersonating #{username}"
+        p "Importing revision #{i+1}/#{revision_count} of '#{page_title}' from #{timestamp}, impersonating #{username}"
         WikiPage.impersonate_user(username)
 
         page = WikiPage.new( { id: page_title,
