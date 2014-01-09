@@ -13,10 +13,9 @@ gem 'builder', '~> 3.0.4'
 # gem 'nokogiri', '~> 1.6.0'
 gem 'pandoc-ruby', '~> 0.7.5'
 
-require 'cgi' # for unescaping HTML entities in Textile markup
 # TODO remove
 #require 'nokogiri' # for parsing the MediaWiki XML export file
-require 'pandoc-ruby' # for converting MediaWiki to Textile markup
+require 'pandoc-ruby' # for converting MediaWiki to various output markups
 require 'active_resource' # for talking to Redmine
 require_relative 'common/xml_handler.rb'
 
@@ -80,7 +79,7 @@ def optimize_mediawiki_markup(markup)
 	#	: Indented description of foo
 	markup.gsub!(/^([*]+)(.*)(?<!\n)\n(:+)/) { $1 + $2 + "\n" + '*' * ($1.length.to_i+1) }
 
-	# Protect these from textile conversion, as redmine wants it to be in mediawiki-style format, for the wiki pages
+	# Protect these from conversion, as redmine wants it to be in mediawiki-style format, for the wiki pages
 	#markup.gsub!(/\[\[((?!HTTP:).+)\]\]/im,'<MW_DOUBLEBRACKET>\\1</MW_DOUBLEBRACKET>')
 	#markup.gsub!(/\[((?!HTTP:).+)\]/im,'<MW_SINGLEBRACKET>\\1</MW_SINGLEBRACKET>')
 
@@ -90,12 +89,7 @@ def optimize_mediawiki_markup(markup)
 	markup
 end
 
-def optimize_textile_markup(markup)
-	#markup = CGI.unescapeHTML(textile_markup)
-
-	#markup.gsub!(/<MW_DOUBLEBRACKET>(.+)<\/MW_DOUBLEBRACKET>/m,'[[\\1]]')
-	#markup.gsub!(/<MW_SINGLEBRACKET>(.+)<\/MW_SINGLEBRACKET>/m,'[\\1]')
-	#markup.gsub!(/<MW_NEWLINE>/,"\n")
+def optimize_markup(markup)
 
 	markup
 end
@@ -108,7 +102,7 @@ def convert_wikitext(markup)
 
   markup = PandocRuby.convert(markup, { :from => :mediawiki, :to => :'html5' }, 'normalize', 'preserve-tabs', 'section-divs', )
 
-  markup = optimize_textile_markup(markup)
+  markup = optimize_markup(markup)
 
   markup
 end
@@ -170,7 +164,7 @@ def push_all_revisions_to_redmine
         date_time = timestamp.strftime(COMMENT_DATE_FORMAT)
         username = (r.css('contributor username').text).downcase || DEFAULT_CONTRIBUTOR
         text_as_mediawiki = r.css('text').text
-		text_as_textile = '<h2><span style="color:#800000;">' + page_title + "</span></h2>\n\n<p>{{&gt;toc}}</p>\n\n" + convert_wikitext(text_as_mediawiki)
+		text_as_output= '<h2><span style="color:#800000;">' + page_title + "</span></h2>\n\n<p>{{&gt;toc}}</p>\n\n" + convert_wikitext(text_as_mediawiki)
 
         comment = r.css('comment').text
         comment_for_redmine = "#{date_time} #{comment}"
@@ -179,7 +173,7 @@ def push_all_revisions_to_redmine
         WikiPage.impersonate_user(username)
 
         page = WikiPage.new( { id: page_title,
-                               text: text_as_textile, comments: comment_for_redmine,
+                               text: text_as_output, comments: comment_for_redmine,
                                version: previous_version }, true )
 
         begin
