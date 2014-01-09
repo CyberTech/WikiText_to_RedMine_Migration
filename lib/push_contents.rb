@@ -18,11 +18,11 @@ require 'cgi' # for unescaping HTML entities in Textile markup
 #require 'nokogiri' # for parsing the MediaWiki XML export file
 require 'pandoc-ruby' # for converting MediaWiki to Textile markup
 require 'active_resource' # for talking to Redmine
-
 require_relative 'common/xml_handler.rb'
 
-
 # Edit the following settings as required.
+
+DELETE_EXISTING_PAGES = true
 
 # The prefix defined in this constant will be removed from MediaWiki page titles.
 REMOVE_PAGE_TITLE_PREFIX = ''
@@ -63,50 +63,54 @@ class WikiPage < ActiveResource::Base
   end
 end
 
-def optimize_mediawiki_markup(mediawiki_markup)
-  # convert to newer list syntax
-  mediawiki_markup.gsub!(/^ \- /, '** ')
+def optimize_mediawiki_markup(markup)
+	# convert to newer list syntax
+	markup.gsub!(/^ \- /, '** ')
 
-  # As the utilized Pandoc version fails to interpret foreign tags like '[[Datei:...]]', rename them to English variant.
-  # NOTE you may need to add your own customizations here
-  mediawiki_markup.gsub!(/\[\[Datei:/,'[[File:')
-  mediawiki_markup.gsub!(/\[\[Bild:/,'[[File:')
+	# :* is either not legal wikitext, or Pandoc wikitext reader doesn't support it. Either way, convert it to the most likely (least damaging) alternative
+	markup.gsub!(/^:\*/) { '**'}
 
-  # Convert lines beginning with one ore more ":" (indented paragraphs) to p(. for textile syntax, retaining indentation level
-  # Otherwise, Pandoc converts it to a noisy (and non-working, with stock redmine) <dl>/<dt>/<dd> combo
-  mediawiki_markup.gsub!(/^(:+?) *([^\n]+?)/m) { 'p' + ('(') * $1.to_s.length + ". " + $2 }
+	# As the utilized Pandoc version fails to interpret foreign tags like '[[Datei:...]]', rename them to English variant.
+	# NOTE you may need to add your own customizations here
+	markup.gsub!(/\[\[Datei:/,'[[File:')
+	markup.gsub!(/\[\[Bild:/,'[[File:')
 
-  # Protect these from textile conversion, as redmine wants it to be in mediawiki-style format, for the wiki pages
-  mediawiki_markup.gsub!(/\[\[((?!HTTP).+?)\]\]/im,'<MW_DOUBLEBRACKET>\\1</MW_DOUBLEBRACKET>')
-  mediawiki_markup.gsub!(/\[((?!HTTP).+?)\]/im,'<MW_SINGLEBRACKET>\\1</MW_SINGLEBRACKET>')
+	# Now, a common mediawiki format is
+	#	* Foo
+	#	: Indented description of foo
+	markup.gsub!(/^([*]+)(.*)(?<!\n)\n(:+)/) { $1 + $2 + "\n" + '*' * ($1.length.to_i+1) }
 
-  mediawiki_markup
+	# Protect these from textile conversion, as redmine wants it to be in mediawiki-style format, for the wiki pages
+	#markup.gsub!(/\[\[((?!HTTP:).+)\]\]/im,'<MW_DOUBLEBRACKET>\\1</MW_DOUBLEBRACKET>')
+	#markup.gsub!(/\[((?!HTTP:).+)\]/im,'<MW_SINGLEBRACKET>\\1</MW_SINGLEBRACKET>')
+
+	# Fix improper syntax with missing space following markup
+	markup.gsub!(/^([#:*]+)([^ ])/) { $1 + " "  + $2}
+
+	markup
 end
 
-def optimize_textile_markup(textile_markup)
-  # 'bc.' (originating in '<pre>') is unsupported in (Planio?) Redmine
-  # Convert it back to a HTML PRE element.
-  textile_markup.gsub!(/^bc\. (.*?)\n\n/m, "<pre>\n\\1\n</pre>\n\n")
+def optimize_textile_markup(markup)
+	#markup = CGI.unescapeHTML(textile_markup)
 
-  textile_markup.gsub!('<em>', '_')
-  textile_markup.gsub!('</em>', '_')
-  textile_markup.gsub!('<tt>', '@')
-  textile_markup.gsub!('</tt>', '@')
+	#markup.gsub!(/<MW_DOUBLEBRACKET>(.+)<\/MW_DOUBLEBRACKET>/m,'[[\\1]]')
+	#markup.gsub!(/<MW_SINGLEBRACKET>(.+)<\/MW_SINGLEBRACKET>/m,'[\\1]')
+	#markup.gsub!(/<MW_NEWLINE>/,"\n")
 
-  textile_markup = CGI.unescapeHTML(textile_markup)
-
-  textile_markup.gsub!(/<MW_DOUBLEBRACKET>(.+?)<\/MW_DOUBLEBRACKET>/m,'[[\\1]]')
-  textile_markup.gsub!(/<MW_SINGLEBRACKET>(.+?)<\/MW_SINGLEBRACKET>/m,'[\\1]')
-
-  textile_markup
+	markup
 end
 
-def get_textile_from(mediawiki_markup)
-  mediawiki_markup = optimize_mediawiki_markup(mediawiki_markup)
-  textile_markup = PandocRuby.convert(mediawiki_markup, :from => :mediawiki, :to => :textile)
-  textile_markup = optimize_textile_markup(textile_markup)
+# Accepts MediaWiki-formated input and returns HTML5 markup with RedMine Wiki exceptions
+def convert_wikitext(markup)
+#p "Original: " + markup[markup.index("Foo")-50,100] if markup.index("Foo")
 
-  textile_markup
+  markup = optimize_mediawiki_markup(markup)
+
+  markup = PandocRuby.convert(markup, { :from => :mediawiki, :to => :html5 }, 'preserve-tabs', 'no-wrap', 'table-of-contents')
+
+  markup = optimize_textile_markup(markup)
+
+  markup
 end
 
 def rename_page_title(title)
@@ -140,19 +144,23 @@ def push_all_revisions_to_redmine
     revision_count = p.css('revision').count
     page_title = rename_page_title(p.css('title').text)
 
+	# Uncomment for testing imports; set PAGETITLE to the page you want it to test importing
+	#next if page_title.index("PAGETITLE").nil?
+
     p "Pushing #{revision_count} revisions to #{page_title} (renamed from #{p.css('title').text}) ..."
 
     begin
-      # raise "A page titled '#{page_title}' already exists." if WikiPage.find(page_title)
-		if (WikiPage.find(page_title))
+		if (WikiPage.find(page_title) && DELETE_EXISTING_PAGES)
 			p "WARNING: A page titled '#{page_title}' already exists. Deleting."
 			delete_wiki_page(page_title)
 		end
 		p "WARNING: A page titled '#{page_title}' still exists. Skipping." if WikiPage.find(page_title)
 
+	# WikiPage.find access denied (likely no wiki access)
     rescue ActiveResource::ForbiddenAccess => fa
 			handle_forbidden_view_access(fa)
 
+	# WikiPage.find failed to find the page, so we're clear to make it
     rescue ActiveResource::ResourceNotFound
       previous_version = 0
 
@@ -162,7 +170,7 @@ def push_all_revisions_to_redmine
         date_time = timestamp.strftime(COMMENT_DATE_FORMAT)
         username = (r.css('contributor username').text).downcase || DEFAULT_CONTRIBUTOR
         text_as_mediawiki = r.css('text').text
-        text_as_textile = "h1. #{page_title}\n\n{{>toc}}\n\n" + get_textile_from(text_as_mediawiki)
+		text_as_textile = '<h2><span style="color:#800000;">' + page_title + "</span></h2>\n\n{{&gt;toc}}\n\n" + convert_wikitext(text_as_mediawiki)
         comment = r.css('comment').text
         comment_for_redmine = "#{date_time} #{comment}"
 
