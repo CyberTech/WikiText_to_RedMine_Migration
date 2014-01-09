@@ -106,7 +106,7 @@ def convert_wikitext(markup)
 
   markup = optimize_mediawiki_markup(markup)
 
-  markup = PandocRuby.convert(markup, { :from => :mediawiki, :to => :html5 }, 'preserve-tabs', 'no-wrap', 'table-of-contents')
+  markup = PandocRuby.convert(markup, { :from => :mediawiki, :to => :'html5' }, 'normalize', 'preserve-tabs', 'section-divs', )
 
   markup = optimize_textile_markup(markup)
 
@@ -171,6 +171,7 @@ def push_all_revisions_to_redmine
         username = (r.css('contributor username').text).downcase || DEFAULT_CONTRIBUTOR
         text_as_mediawiki = r.css('text').text
 		text_as_textile = '<h2><span style="color:#800000;">' + page_title + "</span></h2>\n\n<p>{{&gt;toc}}</p>\n\n" + convert_wikitext(text_as_mediawiki)
+
         comment = r.css('comment').text
         comment_for_redmine = "#{date_time} #{comment}"
 
