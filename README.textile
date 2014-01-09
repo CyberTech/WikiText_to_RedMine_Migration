@@ -32,12 +32,14 @@ h2. Important Notes
 * If you want to import into different projects, *export one XML file per project* (see @--pagelist@ option of MediaWiki's __dumpBackup.php__).
 * This script is known to work with XML exports from *MediaWiki version 1.18.1*.
 * The script will *delete existing* pages in the Redmine wiki, before it attempts each page load.
-** To disable this behavior, edit push_contents.rb, look for "p "WARNING: A page titled '#{page_title}' already exists. Deleting.", and comment out the next line.
-** *Hint:* The following **curl** command poses a *quick way to delete pages*: @curl -i -X DELETE --user "$ADMIN_API_KEY_HERE:$PASSWORD_IS_IRRELEVANT" https://example.plan.io/projects/$PROJECTNAME/wiki/$DESIRED_PAGENAME.xml@
-* You may also use **curl** to get *more meaningful responses*. Example:
-** @curl -i -H 'X-Redmine-Switch-User: importer' -X PUT -d content[text]="sometext" -d content[comments]="somecomment" --user "$ADMIN_API_KEY_HERE:$PASSWORD_IS_IRRELEVANT" https://example.plan.io/projects/$PROJECTNAME/wiki/$DESIRED_PAGENAME.xml@
-* In case you want to *purge all (!)* existing wiki pages, use the following Ruby statement.
-** @pages = WikiPage.get('index').collect { |p| p['title'] }; pages.each { |p| WikiPage.delete(p) }@
+** To disable this behavior, edit push_contents.rb, and set DELETE_EXISTING_PAGES = false
+
+*Manual Deletion:
+** The following **curl** command poses a *quick way to delete pages*: @curl -i -X DELETE --user "$ADMIN_API_KEY_HERE:$PASSWORD_IS_IRRELEVANT" https://example.plan.io/projects/$PROJECTNAME/wiki/$DESIRED_PAGENAME.xml@
+** You may also use **curl** to get *more meaningful responses*. Example:
+*** @curl -i -H 'X-Redmine-Switch-User: importer' -X PUT -d content[text]="sometext" -d content[comments]="somecomment" --user "$ADMIN_API_KEY_HERE:$PASSWORD_IS_IRRELEVANT" https://example.plan.io/projects/$PROJECTNAME/wiki/$DESIRED_PAGENAME.xml@
+** In case you want to *purge all (!)* existing wiki pages, use the following Ruby statement.
+*** @pages = WikiPage.get('index').collect { |p| p['title'] }; pages.each { |p| WikiPage.delete(p) }@
 
 
 
