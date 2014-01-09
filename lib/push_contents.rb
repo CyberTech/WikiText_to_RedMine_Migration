@@ -170,7 +170,7 @@ def push_all_revisions_to_redmine
         date_time = timestamp.strftime(COMMENT_DATE_FORMAT)
         username = (r.css('contributor username').text).downcase || DEFAULT_CONTRIBUTOR
         text_as_mediawiki = r.css('text').text
-		text_as_textile = '<h2><span style="color:#800000;">' + page_title + "</span></h2>\n\n{{&gt;toc}}\n\n" + convert_wikitext(text_as_mediawiki)
+		text_as_textile = '<h2><span style="color:#800000;">' + page_title + "</span></h2>\n\n<p>{{&gt;toc}}</p>\n\n" + convert_wikitext(text_as_mediawiki)
         comment = r.css('comment').text
         comment_for_redmine = "#{date_time} #{comment}"
 
