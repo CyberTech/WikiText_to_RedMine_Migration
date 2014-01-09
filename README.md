@@ -1,7 +1,7 @@
-MediaWiki to Redmine Migration Tool (MRMT)
-==========================================
+WikiText to Redmine+CKEditor Migration Tool
+===================================================
 
-This script parses **MediaWiki XML exports** and pushes them into **Redmine Wiki pages**.
+This script parses **MediaWiki** XML exports, in WikiText markup, and pushes them into **Redmine** Wiki pages, in HTML5 format.
 
 The basic logic for this is:
 
@@ -11,14 +11,8 @@ The basic logic for this is:
 4.  Tweak the Textile markup (mainly search & replace)
 5.  Push all pages including their revisions *impersonating the original author* using **ActiveResource**
 
-Thanks
-------
-
-Initial implementation is sponsored by [vita-life Magnetic-Resonance-Systems(vita-life - Creating Vitality; official site)](http://www.vita-life.com) and **Planio, the Redmine-based Project Management Platform** ([Affiliate-Link(Planio - The Project Management Platform; official site)](https://plan.io/?ref=r62Ibn)).
-
-This script was thoroughly tested and confirmed to work for migrations from **MediaWiki** to **Planio Redmine** wikis.
-
-I’d also like to thank the **Planio Support Team** and Stack Overflow user **mechanicalfish** for certain hints during development.
+Used for migration from **MediaWiki** to **Redmine** wikis with CKEditor as the text formatting plugin.
+Original Script: https://github.com/GSI/mrmt MediaWiki to Redmine Migration Tool (MRMT) (converts wikitext to textile)
 
 Important Notes
 ---------------
@@ -27,7 +21,7 @@ Important Notes
 -   Due to restrictions in the Redmine API, this script adds the *original revision timestamp* **to the revision comment**. The revision itself will be associated with the current date (= date the migration is run).
 -   MediaWiki contributor names will be converted to **lowercase Redmine user names**.
 -   **Table of contents** (`{{>toc}}`) will be inserted at the top of every page.
--   If you want to import into different projects, **export one XML file per project** (see `--pagelist` option of MediaWiki’s *dumpBackup.php*).
+-   If you want to import into different projects, **export one XML file per project** (see `--pagelist` option of MediaWiki's *dumpBackup.php*).
 -   This script is known to work with XML exports from **MediaWiki version 1.18.1**.
 -   The script will **delete existing** pages in the Redmine wiki, before it attempts each page load.
     -   To disable this behavior, edit push\_contents.rb, and set DELETE\_EXISTING\_PAGES = false
@@ -40,10 +34,10 @@ Important Notes
 ****\* `pages = WikiPage.get('index').collect { |p| p['title'] }; pages.each { |p| WikiPage.delete(p) }`
 
 
-h2. Prerequisites
-\# Redmine version must be**at least 2.2.0\* in order to allow API access to wiki pages
-\# Install the **Pandoc binary \* 1.12.0.2 or newer on your system.
-**\* See http://johnmacfarlane.net/pandoc/installing.html for details
+## Prerequisites
+- Redmine version must be at least 2.2.0 in order to allow API access to wiki pages
+- Pandoc 1.12.0.2 or newer (try your package management system, else http://johnmacfarlane.net/pandoc/installing.html)
+- pandoc-ruby (https://github.com/alphabetum/pandoc-ruby).
 
 Usage
 -----
@@ -54,7 +48,7 @@ Follow these steps in the given order.
 
 1.  Deny all edits (see [MediaWiki: \$wgReadOnly(Disallow editing)](https://www.mediawiki.org/wiki/Manual:$wgReadOnly) and/or [MediaWiki: Preventing Access(Restrict editing by absolutely everyone)](https://www.mediawiki.org/wiki/Manual:Preventing_access#Restrict_editing_by_absolutely_everyone)).
 2.  Export the wiki as XML (see [WikiMedia: Export(How to export)](https://meta.wikimedia.org/wiki/Help:Export#How_to_export)).
-    -   **Suggestion:** `su -m www -c "php ./maintenance/dumpBackup.php --full --pagelist=./pagelist --include-files > PATH_FOR/mediawiki-pages.xml"`
+    - `su -m www -c "php ./maintenance/dumpBackup.php --full --pagelist=./pagelist --include-files > PATH_FOR/mediawiki-pages.xml"`
 
 ### In XML file: Clean up and remap users
 
