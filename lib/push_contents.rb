@@ -80,8 +80,8 @@ def optimize_mediawiki_markup(markup)
 	markup.gsub!(/^([*]+)(.*)(?<!\n)\n(:+)/) { $1 + $2 + "\n" + '*' * ($1.length.to_i+1) }
 
 	# Protect these from conversion, as redmine wants it to be in mediawiki-style format, for the wiki pages
-	#markup.gsub!(/\[\[((?!HTTP:).+)\]\]/im,'<MW_DOUBLEBRACKET>\\1</MW_DOUBLEBRACKET>')
-	#markup.gsub!(/\[((?!HTTP:).+)\]/im,'<MW_SINGLEBRACKET>\\1</MW_SINGLEBRACKET>')
+	markup.gsub!(/\[\[((?!HTTPS{0,1}:).+)\]\]/i,'<MW_DOUBLEBRACKET>\\1</MW_DOUBLEBRACKET>')
+	markup.gsub!(/\[((?!HTTPS{0,1}:).+)\]/i,'<MW_SINGLEBRACKET>\\1</MW_SINGLEBRACKET>')
 
 	# Fix improper syntax with missing space following markup
 	markup.gsub!(/^([#:*]+)([^ ])/) { $1 + " "  + $2}
@@ -90,6 +90,9 @@ def optimize_mediawiki_markup(markup)
 end
 
 def optimize_markup(markup)
+
+	markup.gsub!(/<MW_DOUBLEBRACKET>(.+)<\/MW_DOUBLEBRACKET>/, '[[\\1]]')
+	markup.gsub!(/<MW_SINGLEBRACKET>(.+)<\/MW_SINGLEBRACKET>/, '[\\1]')
 
 	markup
 end
