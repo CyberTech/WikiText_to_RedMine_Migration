@@ -7,9 +7,8 @@ The basic logic for this is:
 
 1.  Parse XML file using **Nokogiri**
 2.  Tweak the MediaWiki markup (mainly search & replace)
-3.  Convert MediaWiki markup to Textile using **Pandoc** binary (via **PandocRuby**)
-4.  Tweak the Textile markup (mainly search & replace)
-5.  Push all pages including their revisions *impersonating the original author* using **ActiveResource**
+3.  Convert MediaWiki markup to HTML5 using **Pandoc** binary (via **Pandoc-Ruby**)
+4.  Push all pages including their revisions *impersonating the original author* using **ActiveResource**
 
 Original Script: https://github.com/GSI/mrmt MediaWiki to Redmine Migration Tool (MRMT) (converts wikitext to textile)
 
@@ -88,9 +87,8 @@ Follow these steps in the given order.
     -   **Hint:** List all contributors of the XML file via `./list_contributors.rb PATH_TO/mediawiki-pages.xml` to verify only wanted contributors remain present.
 
 2.  Optionally remove any unwanted contributions entirely.
-3.  Redmine expects the default “Start Page” for the wiki to be named “Wiki”. This can be changed in project settings. a suggested value might be
-     the project name, such as MYHPROJECT. If you choose to do this, then you might want to search and replace “Main\_Page” and “Main Page” to match your chosen name.
-    Note that some auto-generated revisions in MediaWiki, like the “Main Page”, might be missing a contributor. The script is hard-coded to handle such cases by automatically assigning them to **“admin”**.
+3.  Redmine expects the default “Start Page” for the wiki to be named “Wiki”. This can be changed in project settings. a suggested value might be the project name, such as MYHPROJECT. If you choose to do this, then you might want to search and replace “Main\_Page” and “Main Page” to match your chosen name.
+-	Note that some auto-generated revisions in MediaWiki, like the “Main Page”, might be missing a contributor. The script is hard-coded to handle such cases by automatically assigning them to **“admin”**.
 
 ### In Redmine: Prepare wiki and users
 
