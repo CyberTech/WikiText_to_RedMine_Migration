@@ -167,14 +167,14 @@ def push_all_revisions_to_redmine
 		text_as_output= '<h2><span style="color:#800000;">' + page_title + "</span></h2>\n\n<p>{{&gt;toc}}</p>\n\n" + convert_wikitext(text_as_mediawiki)
 
         comment = r.css('comment').text
-        comment_for_redmine = "#{date_time} #{comment}"
+        comment_for_redmine = "#{comment}"
 
         p "Importing revision #{i+1}/#{revision_count} of '#{page_title}' from #{timestamp}, impersonating #{username}"
         WikiPage.impersonate_user(username)
 
         page = WikiPage.new( { id: page_title,
                                text: text_as_output, comments: comment_for_redmine,
-                               version: previous_version }, true )
+                               version: previous_version, updated_on: timestamp }, true )
 
         begin
           page.save
