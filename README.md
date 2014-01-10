@@ -1,7 +1,7 @@
 WikiText to Redmine+CKEditor Migration Tool
 ===================================================
 
-This script parses **MediaWiki** XML exports, in WikiText markup, and pushes them into **Redmine** Wiki pages, in HTML5 format.
+This script parses **MediaWiki** XML exports, in WikiText markup, and pushes them into **Redmine** Wiki pages, in HTML5 format. Used for migration from **MediaWiki** to **Redmine** wikis with CKEditor as the text formatting plugin.
 
 The basic logic for this is:
 
@@ -11,33 +11,64 @@ The basic logic for this is:
 4.  Tweak the Textile markup (mainly search & replace)
 5.  Push all pages including their revisions *impersonating the original author* using **ActiveResource**
 
-Used for migration from **MediaWiki** to **Redmine** wikis with CKEditor as the text formatting plugin.
 Original Script: https://github.com/GSI/mrmt MediaWiki to Redmine Migration Tool (MRMT) (converts wikitext to textile)
 
 Important Notes
 ---------------
-
--   The script assumes that all **revisions in the XML files are already in correct order**. Experience shows that this typically is the case when exporting from MediaWiki.
--   Due to restrictions in the Redmine API, this script adds the *original revision timestamp* **to the revision comment**. The revision itself will be associated with the current date (= date the migration is run).
+-   The script assumes that all **revisions in the XML files are already in correct order**.
+	-   Experience shows that this typically is the case when exporting from MediaWiki.
 -   MediaWiki contributor names will be converted to **lowercase Redmine user names**.
--   **Table of contents** (`{{>toc}}`) will be inserted at the top of every page.
 -   If you want to import into different projects, **export one XML file per project** (see `--pagelist` option of MediaWiki's *dumpBackup.php*).
 -   This script is known to work with XML exports from **MediaWiki version 1.18.1**.
--   The script will **delete existing** pages in the Redmine wiki, before it attempts each page load.
-    -   To disable this behavior, edit push\_contents.rb, and set DELETE\_EXISTING\_PAGES = false
 
-**Manual Deletion:
-**\* The following **curl** command poses a **quick way to delete pages**: `curl -i -X DELETE --user "$ADMIN_API_KEY_HERE:$PASSWORD_IS_IRRELEVANT" https://example.plan.io/projects/$PROJECTNAME/wiki/$DESIRED_PAGENAME.xml`
-**\* You may also use****curl**\* to get **more meaningful responses**. Example:
-**\* `curl -i -H 'X-Redmine-Switch-User: importer' -X PUT -d content[text]="sometext" -d content[comments]="somecomment" --user "$ADMIN_API_KEY_HERE:$PASSWORD_IS_IRRELEVANT" https://example.plan.io/projects/$PROJECTNAME/wiki/$DESIRED_PAGENAME.xml`
-** In case you want to **purge all \* existing wiki pages, use the following Ruby statement.
-****\* `pages = WikiPage.get('index').collect { |p| p['title'] }; pages.each { |p| WikiPage.delete(p) }`
+Content Changes
+---------------
+-   **Table of contents** (`{{>toc}}`) will be inserted at the top of every page.
+-   The script will **delete existing** pages in the Redmine wiki, before it attempts each page load.
+	-   To disable this behavior, edit push\_contents.rb, and set DELETE\_EXISTING\_PAGES = false
+
+Manually Deleting Redmine Wiki Pages
+------------------------------------
+-	The following **curl** command poses a **quick way to delete pages**:
+	`curl -i -X DELETE --user "$ADMIN_API_KEY_HERE:$PASSWORD_IS_IRRELEVANT" https://example.plan.io/projects/$PROJECTNAME/wiki/$DESIRED_PAGENAME.xml`
+-	You may also use curl to get more meaningful responses. Example:
+	`curl -i -H 'X-Redmine-Switch-User: importer' -X PUT -d content[text]="sometext" -d content[comments]="somecomment" --user "$ADMIN_API_KEY_HERE:$PASSWORD_IS_IRRELEVANT" https://example.plan.io/projects/$PROJECTNAME/wiki/$DESIRED_PAGENAME.xml`
+-	In case you want to purge all existing wiki pages, use the following Ruby statement.
+	`pages = WikiPage.get('index').collect { |p| p['title'] }; pages.each { |p| WikiPage.delete(p) }`
+-	Alternatively, go to Project, Settings, Wiki, Delete. Then Re-Create the wiki.
 
 
 ## Prerequisites
 - Redmine version must be at least 2.2.0 in order to allow API access to wiki pages
 - Pandoc 1.12.0.2 or newer (try your package management system, else http://johnmacfarlane.net/pandoc/installing.html)
 - pandoc-ruby (https://github.com/alphabetum/pandoc-ruby).
+
+Importing Timestamps
+--------------------
+In order for timestamps to be accepted by Redmines wiki API, the following patch needs to be applied. You can (and probably should) remove it after your imports are done.
+
+````ruby
+===================================================================
+--- wiki_controller.rb  (revision 12484)
++++ wiki_controller.rb  (working copy)
+@@ -135,7 +135,7 @@
+     @content = @page.content || WikiContent.new(:page => @page)
+     content_params = params[:content]
+     if content_params.nil? && params[:wiki_page].is_a?(Hash)
+-      content_params = params[:wiki_page].slice(:text, :comments, :version)
++      content_params = params[:wiki_page].slice(:text, :comments, :version, :updated_on)
+     end
+     content_params ||= {}
+ 
+@@ -150,6 +150,7 @@
+       @content.text = @text
+     end
+     @content.author = User.current
++    @content.updated_on = DateTime.parse(content_params[:updated_on].to_s) if content_params[:updated_on]
+ 
+     if @page.save_with_content(@content)
+       attachments = Attachment.attach_files(@page, params[:attachments])
+````
 
 Usage
 -----
