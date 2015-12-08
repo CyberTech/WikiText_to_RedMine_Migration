@@ -94,6 +94,10 @@ def optimize_markup(markup)
 	markup.gsub!(/<MW_DOUBLEBRACKET>(.+)<\/MW_DOUBLEBRACKET>/, '[[\\1]]')
 	markup.gsub!(/<MW_SINGLEBRACKET>(.+)<\/MW_SINGLEBRACKET>/, '[\\1]')
 
+        # Handle brackets in <code> blocks (which has all < > converted to &lt; and &gt;)
+        markup.gsub!('&lt;MW_SINGLEBRACKET&gt;', '[')
+        markup.gsub!('&lt;/MW_SINGLEBRACKET&gt;', ']')
+
 	markup
 end
 
