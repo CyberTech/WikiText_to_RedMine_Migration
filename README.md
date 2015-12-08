@@ -1,4 +1,4 @@
-WikiText to Redmine+CKEditor Migration Tool
+MediaWiki to Redmine+CKEditor Migration Tool
 ===================================================
 
 This script parses **MediaWiki** XML exports, in WikiText markup, and pushes them into **Redmine** Wiki pages, in HTML5 format. Used for migration from **MediaWiki** to **Redmine** wikis with CKEditor as the text formatting plugin.
